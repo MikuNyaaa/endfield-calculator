@@ -337,8 +337,8 @@
                     <p><strong>功能：</strong>根据电力参数计算放电时间，并通过二进制分流（÷2）和三进制分流（÷3）来达到目标输出效率。</p>
                     <p><strong>输入：</strong></p>
                     <ul>
-                        <li><strong>满电消耗(x)：</strong>满电时每秒的电力消耗</li>
-                        <li><strong>满电产出(y)：</strong>满电时每秒的电力产出</li>
+                        <li><strong>满转消耗(x)：</strong>热能池全开时游戏上方数字 x/y 中的 x</li>
+                        <li><strong>满转生产(y)：</strong>热能池全开时游戏上方数字 x/y 中的 y</li>
                         <li><strong>电池供电量(z)：</strong>单个电池的供电量</li>
                     </ul>
                     <p><strong>计算逻辑：</strong></p>
@@ -358,13 +358,13 @@
             <div class="right-panel">
         <div class="input-section">
             <div class="input-group">
-                <label for="consumption">满电消耗 (x):</label>
-                <input type="number" id="consumption" min="1" step="1" placeholder="输入满电消耗" oninput="validatePositiveInteger(this)" onkeypress="return isNumberKey(event)">
+                <label for="consumption">满转消耗 (x):</label>
+                <input type="number" id="consumption" min="1" step="1" placeholder="输入满转消耗" oninput="validatePositiveInteger(this)" onkeypress="return isNumberKey(event)">
             </div>
             
             <div class="input-group">
-                <label for="production">满电产出 (y):</label>
-                <input type="number" id="production" min="1" step="1" placeholder="输入满电产出" oninput="validatePositiveInteger(this)" onkeypress="return isNumberKey(event)">
+                <label for="production">满转生产 (y):</label>
+                <input type="number" id="production" min="1" step="1" placeholder="输入满转生产" oninput="validatePositiveInteger(this)" onkeypress="return isNumberKey(event)">
             </div>
             
             <div class="input-group">
@@ -464,15 +464,15 @@
                 return;
             }
             
-            // 检查满电产出是否至少大于1节电池供电量
+            // 检查满转生产是否至少大于1节电池供电量
             if (y <= z) {
-                alert('满电产出必须至少大于1节选定的电池供电量！\n当前满电产出: ' + y + '\n当前电池供电量: ' + z + '\n最小要求: ' + (z + 1));
+                alert('满转生产必须至少大于1节选定的电池供电量！\n当前满转生产: ' + y + '\n当前电池供电量: ' + z + '\n最小要求: ' + (z + 1));
                 return;
             }
             
             // 检查是否能充满电
             if (y <= x) {
-                alert('满电产出必须大于满电消耗，否则无法充电！');
+                alert('满转生产必须大于满转消耗，否则无法充电！');
                 return;
             }
             

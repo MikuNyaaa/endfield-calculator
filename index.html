@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产线分流计算器</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+            background: #f5f5f5;
+            min-height: 100vh;
+            font-size: 13px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #39c5bb;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .input-group {
+            margin-bottom: 8px;
+        }
+        
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 3px;
+            color: #555;
+            font-size: 12px;
+        }
+        
+        input[type="number"], select {
+            width: 100%;
+            padding: 6px;
+            border: 2px solid #ddd;
+            border-radius: 3px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        
+        input[type="number"]:focus, select:focus {
+            outline: none;
+            border-color: #39c5bb;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #39c5bb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: normal;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2da89f;
+        }
+        
+        button:active {
+            background: #248c84;
+        }
+        
+        .result-section {
+            margin-top: 15px;
+        }
+        
+        .result-header {
+            border-bottom: 2px solid #39c5bb;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .result-header h2 {
+            margin: 0;
+            color: #39c5bb;
+            font-weight: normal;
+            font-size: 1.1em;
+        }
+        
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card {
+            background: #fafafa;
+            padding: 6px;
+            border-radius: 2px;
+            border-left: 3px solid #39c5bb;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 2px;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .pipeline-list {
+            margin-top: 10px;
+        }
+        
+        .pipeline-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 2px;
+            padding: 8px;
+            margin-bottom: 6px;
+            transition: all 0.2s;
+        }
+        
+        .pipeline-item:hover {
+            border-color: #999;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .pipeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        
+        .pipeline-title {
+            font-weight: normal;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .pipeline-efficiency {
+            background: #39c5bb;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 2px;
+            font-size: 11px;
+        }
+        
+        .pipeline-splits {
+            color: #666;
+            line-height: 1.5;
+            font-size: 12px;
+        }
+        
+        .split-badge {
+            display: inline-block;
+            background: #e0e0e0;
+            color: #333;
+            padding: 2px 6px;
+            border-radius: 2px;
+            margin-right: 4px;
+            font-size: 11px;
+        }
+        
+        .description {
+            background: #fafafa;
+            padding: 10px;
+            border-radius: 2px;
+            margin-bottom: 10px;
+            border-left: 3px solid #39c5bb;
+            font-size: 12px;
+        }
+        
+        .description h3 {
+            margin-top: 0;
+            color: #39c5bb;
+            font-weight: normal;
+            font-size: 1.1em;
+            margin-bottom: 8px;
+        }
+        
+        .description p {
+            margin: 5px 0;
+        }
+        
+        .description ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        
+        .description li {
+            margin: 3px 0;
+        }
+        
+        .no-solution {
+            background: #fafafa;
+            color: #666;
+            padding: 12px;
+            border-radius: 2px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            font-size: 12px;
+        }
+        
+        .main-layout {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .pipeline-section {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>产线分流计算器</h1>
+        
+        <div class="main-layout">
+            <div class="left-panel">
+                <div class="description">
+                    <h3>使用说明</h3>
+                    <p><strong>功能：</strong>根据电力参数计算放电时间，并通过二进制分流（÷2）和三进制分流（÷3）来达到目标输出效率。</p>
+                    <p><strong>输入：</strong></p>
+                    <ul>
+                        <li><strong>满电消耗(x)：</strong>满电时每秒的电力消耗</li>
+                        <li><strong>满电产出(y)：</strong>满电时每秒的电力产出</li>
+                        <li><strong>电池供电量(z)：</strong>单个电池的供电量</li>
+                    </ul>
+                    <p><strong>计算逻辑：</strong></p>
+                    <ul>
+                        <li>电池总容量：100000</li>
+                        <li>充电时每秒增加：y - x</li>
+                        <li>充电时间固定：40秒</li>
+                        <li>40秒内充满电量 = min((y - x) × 40, 100000)</li>
+                        <li>掉电速率 = x - (y - z)</li>
+                        <li>最佳掉电时间 = 40秒内充满电量 / 掉电速率</li>
+                        <li>目标效率 = 最佳掉电时间 + 40秒</li>
+                    </ul>
+                    <p><strong>输出：</strong>具体的分流方案和实际效率（基础速度为 2秒/个）。</p>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+        <div class="input-section">
+            <div class="input-group">
+                <label for="consumption">满电消耗 (x):</label>
+                <input type="number" id="consumption" min="0" step="1" placeholder="输入满电消耗">
+            </div>
+            
+            <div class="input-group">
+                <label for="production">满电产出 (y):</label>
+                <input type="number" id="production" min="0" step="1" placeholder="输入满电产出">
+            </div>
+            
+            <div class="input-group">
+                <label for="battery">电池供电量 (z):</label>
+                <select id="battery">
+                    <option value="" disabled selected>请选择电池类型</option>
+                    <option value="220">低谷地电 (220)</option>
+                    <option value="420">中谷地电 (420)</option>
+                    <option value="1100">高谷地电 (1100)</option>
+                    <option value="1600">低武陵电 (1600)</option>
+                </select>
+            </div>
+            
+            <button onclick="calculate()">计算分流方案</button>
+            
+            <div class="result-section" id="result">
+                <div class="result-header">
+                    <h2>计算结果</h2>
+                </div>
+                <div class="result-stats" id="stats"></div>
+            </div>
+            </div>
+        </div>
+        
+        <div class="pipeline-section" id="pipelineSection" style="display: none;">
+            <div class="result-header">
+                <h2>分流方案</h2>
+            </div>
+            <div class="pipeline-list" id="pipelineList"></div>
+        </div>
+        </div>
+    </div>
+
+    <script>
+        function calculate() {
+            const x = parseFloat(document.getElementById('consumption').value);
+            const y = parseFloat(document.getElementById('production').value);
+            const z = parseFloat(document.getElementById('battery').value);
+            
+            if (!x || !y || !z || x <= 0 || y <= 0 || z <= 0) {
+                alert('请输入有效的数值！');
+                return;
+            }
+            
+            // 检查是否能充满电
+            if (y <= x) {
+                alert('满电产出必须大于满电消耗，否则无法充电！');
+                return;
+            }
+            
+            // 检查掉电速率 = x - (y - z)
+            const dischargeRate = x - (y - z);
+            if (dischargeRate <= 0) {
+                alert('掉电速率必须大于0，请调整参数！');
+                return;
+            }
+            
+            // 计算40秒内充满的电量
+            const maxCapacity = 100000;
+            const chargeRate = y - x;
+            const chargeIn40Seconds = chargeRate * 40;
+            const fullCharge = Math.min(chargeIn40Seconds, maxCapacity);
+            
+            // 计算最佳掉电时间 = 40秒内充满的电量 / 掉电速率
+            const dischargeTime = fullCharge / dischargeRate;
+            
+            // 目标效率 = 放电时间 + 40秒
+            const targetEfficiency = dischargeTime + 40;
+            
+            // 目标速率
+            const targetRate = 1 / targetEfficiency;
+            
+            // 为产线生成可能的分流组合
+            const solutions = findBestSplit(targetRate);
+            
+            displayResults(x, y, z, chargeRate, fullCharge, dischargeTime, targetEfficiency, solutions);
+        }
+        
+        function findBestSplit(targetRate) {
+            // 生成所有可能的分流组合
+            const maxDepth = 20;
+            const allPossibleRates = generatePossibleRates(maxDepth);
+            
+            // 找到最优组合
+            return findOptimalCombination(targetRate, allPossibleRates);
+        }
+        
+        function generatePossibleRates(maxDepth) {
+            const rates = new Map();
+            
+            function dfs(currentTime, splits, depth) {
+                if (depth > maxDepth) return;
+                
+                const currentRate = 1 / currentTime;
+                const key = currentRate.toFixed(10);
+                
+                if (!rates.has(key) || splits.length < rates.get(key).splits.length) {
+                    rates.set(key, {
+                        splits: [...splits],
+                        rate: currentRate,
+                        time: currentTime
+                    });
+                }
+                
+                // 尝试二分（时间×2）
+                dfs(currentTime * 2, [...splits, 2], depth + 1);
+                
+                // 尝试三分（时间×3）
+                dfs(currentTime * 3, [...splits, 3], depth + 1);
+            }
+            
+            dfs(2, [], 0); // 从2秒/个开始
+            return Array.from(rates.values());
+        }
+        
+        function findOptimalCombination(targetRate, possibleRates) {
+            // 筛选出速率大于等于目标速率的选项（速度要更快）
+            let validRates = possibleRates.filter(r => r.rate >= targetRate);
+            
+            if (validRates.length === 0) {
+                // 如果没有大于等于目标的，取最大的那个
+                validRates = [possibleRates.reduce((max, r) => r.rate > max.rate ? r : max)];
+            }
+            
+            // 排序：优先选择速率小的（更接近目标但不低于目标）
+            validRates.sort((a, b) => {
+                if (Math.abs(a.rate - b.rate) > 0.0001) {
+                    return a.rate - b.rate;
+                }
+                return a.splits.length - b.splits.length;
+            });
+            
+            // 选择最接近目标的那个
+            const bestRate = validRates[0];
+            
+            return {
+                pipeline: bestRate,
+                totalRate: bestRate.rate,
+                totalTime: bestRate.time
+            };
+        }
+        
+        function displayResults(x, y, z, chargeRate, fullCharge, dischargeTime, targetEfficiency, solutions) {
+            const resultSection = document.getElementById('result');
+            const statsDiv = document.getElementById('stats');
+            const pipelineListDiv = document.getElementById('pipelineList');
+            
+            if (!solutions.pipeline) {
+                pipelineListDiv.innerHTML = '<div class="no-solution">无法找到合适的分流方案</div>';
+                document.getElementById('pipelineSection').style.display = 'block';
+                return;
+            }
+            
+            // 显示统计信息
+            const actualRate = solutions.totalRate;
+            const actualTime = solutions.totalTime;
+            const efficiency = actualTime > 0 ? (actualTime / targetEfficiency * 100).toFixed(2) : '0.00';
+            
+            // 计算每天节省的电池数量（个）
+            // 实际效率时间包含了充电40秒 + 掉电生产时间
+            // 一天能跑多少个周期
+            const cyclesPerDay = 86400 / actualTime;
+            // 每个周期的实际掉电时间 = 实际效率时间 - 充电40秒
+            const actualDischargeTime = actualTime - 40;
+            // 一天掉电总时间（这段时间不需要外接电池！）
+            const totalDischargeTime = cyclesPerDay * actualDischargeTime;
+            // 掉电时间就是省下来的电池数量（每40秒省1个）
+            const batterySavedPerDay = totalDischargeTime / 40;
+            
+            // 计算节省的金钱
+            const batteryPrices = {
+                220: { value: 16, unit: '谷地券' },
+                420: { value: 30, unit: '谷地券' },
+                1100: { value: 70, unit: '谷地券' },
+                1600: { value: 25, unit: '武陵券' }
+            };
+            const priceInfo = batteryPrices[z] || { value: 0, unit: '券' };
+            const moneySavedPerDay = batterySavedPerDay * priceInfo.value;
+            
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">满电消耗 (x)</div>
+                    <div class="stat-value">${x.toFixed(0)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">满电产出 (y)</div>
+                    <div class="stat-value">${y.toFixed(0)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">电池供电 (z)</div>
+                    <div class="stat-value">${z.toFixed(0)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">充电速率 (y-x)</div>
+                    <div class="stat-value">${chargeRate.toFixed(0)}/秒</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">40秒充满电量</div>
+                    <div class="stat-value">${fullCharge.toFixed(0)}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">掉电速率 x-(y-z)</div>
+                    <div class="stat-value">${(x - (y - z)).toFixed(0)}/秒</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">最佳掉电时间</div>
+                    <div class="stat-value">${dischargeTime.toFixed(2)} 秒</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">目标效率</div>
+                    <div class="stat-value">${targetEfficiency.toFixed(2)} 秒/个</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">实际效率</div>
+                    <div class="stat-value" style="color: ${actualTime < targetEfficiency ? '#39c5bb' : '#e53935'}">${actualTime.toFixed(4)} 秒/个</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">效率比例</div>
+                    <div class="stat-value" style="color: ${parseFloat(efficiency) <= 100 ? '#39c5bb' : '#e53935'}">${efficiency}%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">实际速率</div>
+                    <div class="stat-value">${actualRate.toFixed(6)} 个/秒</div>
+                </div>
+                <div class="stat-card" style="border-left-color: #4caf50;">
+                    <div class="stat-label">每天节省电池</div>
+                    <div class="stat-value" style="color: #4caf50;">${batterySavedPerDay.toFixed(1)} 个</div>
+                </div>
+                <div class="stat-card" style="border-left-color: #ff9800;">
+                    <div class="stat-label">每天节省调度券</div>
+                    <div class="stat-value" style="color: #ff9800;">${moneySavedPerDay.toFixed(0)} ${priceInfo.unit}</div>
+                </div>
+            `;
+            
+            // 显示分流方案
+            const pipelineSectionDiv = document.getElementById('pipelineSection');
+            const pipeline = solutions.pipeline;
+            const splitsText = pipeline.splits.length > 0 
+                ? pipeline.splits.map(s => `<span class="split-badge">÷${s}</span>`).join(' → ')
+                : '<span class="split-badge">无分流</span>';
+            
+            const timeDisplay = pipeline.time ? `${pipeline.time}秒/个` : '2秒/个';
+            
+            let html = `
+                <div class="pipeline-item">
+                    <div class="pipeline-header">
+                        <div class="pipeline-title">分流配置</div>
+                        <div class="pipeline-efficiency">${timeDisplay}</div>
+                    </div>
+                    <div class="pipeline-splits">
+                        <strong>分流设置：</strong>${splitsText}
+                    </div>
+                    <div class="pipeline-splits">
+                        <strong>速率：</strong>${pipeline.rate.toFixed(6)} 个/秒
+                    </div>
+                    <div class="pipeline-splits">
+                        <strong>效率：</strong>${pipeline.time.toFixed(4)} 秒/个
+                    </div>
+                </div>
+            `;
+            
+            pipelineListDiv.innerHTML = html;
+            pipelineSectionDiv.style.display = 'block';
+            
+            // 滚动到结果区域
+            resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    </script>
+    
+    <footer style="text-align: center; margin-top: 20px; padding: 15px; color: #999; font-size: 12px; border-top: 1px solid #e0e0e0;">
+        <div>作者：MikuNya</div>
+        <div style="margin-top: 5px;">终末地ID：1807423708</div>
+    </footer>
+</body>
+</html>

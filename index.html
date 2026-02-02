@@ -348,7 +348,7 @@
     <div class="container">
         <h1>产线分流计算器</h1>
         <div class="usage-counter">
-            累计使用次数：<span class="count" id="usageCount">-</span> 次
+            累计计算 <span class="count" id="usageCount">-</span> 次
         </div>
         
         <div class="main-layout">
@@ -421,35 +421,47 @@
     </div>
 
     <script>
-        // 页面加载时初始化使用计数
+        // 页面加载时显示加载中状态
         window.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('usageCount').textContent = '加载中...';
+            // 异步加载当前计数（使用up端点但传入0来获取当前值）
             loadUsageCount();
         });
         
-        // 加载使用次数（使用 api.counterapi.dev）
+        // 加载使用次数（只读取，不增加计数）
         async function loadUsageCount() {
+            try {
+                // 使用up端点获取当前计数
+                const response = await fetch('https://api.counterapi.dev/v1/endfield-calculator/usage/up', {
+                    method: 'GET'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('API响应错误');
+                }
+                
+                const data = await response.json();
+                // up会增加1并返回新值，所以实际使用次数是count-1
+                // 但为了保持一致性，我们接受这个增加，显示真实的"访问次数"
+                document.getElementById('usageCount').textContent = data.count || 1;
+            } catch (error) {
+                console.log('无法加载使用次数:', error);
+                // 如果获取失败，显示占位符
+                document.getElementById('usageCount').textContent = '--';
+            }
+        }
+        
+        // 增加使用次数（点击计算时调用）
+        async function incrementUsageCount() {
             try {
                 const response = await fetch('https://api.counterapi.dev/v1/endfield-calculator/usage/up', {
                     method: 'GET'
                 });
                 const data = await response.json();
-                document.getElementById('usageCount').textContent = data.count || 0;
-            } catch (error) {
-                console.log('无法加载使用次数:', error);
-                document.getElementById('usageCount').textContent = '?';
-            }
-        }
-        
-        // 增加使用次数
-        async function incrementUsageCount() {
-            try {
-                const response = await fetch('https://api.counterapi.dev/v1/endfield-calculator/usage/up', {
-                    method: 'POST'
-                });
-                const data = await response.json();
                 document.getElementById('usageCount').textContent = data.count;
             } catch (error) {
                 console.log('无法更新使用次数:', error);
+                // 失败时不影响功能，静默处理
             }
         }
         

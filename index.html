@@ -577,8 +577,11 @@
             // 目标时间 = 1 / 目标速率
             const targetTime = 1 / targetRate;
             
-            // 从目标时间反向推导最佳分流组合
-            return findOptimalSplitFromTime(targetTime);
+            // 返回两个方案：最佳分流 和 轻量化方案
+            return {
+                optimal: findOptimalSplitFromTime(targetTime),
+                lightweight: findLightweightSplitFromTime(targetTime)
+            };
         }
         
         function findOptimalSplitFromTime(targetTime) {
@@ -675,8 +678,8 @@
             // 检查只使用1/3和1/2的方案的效率比例
             const efficiencyRatio = bestMultiplier / targetMultiplier;
             
-            // 如果效率比例低于80%，再使用2/3分流器进行优化
-            if (efficiencyRatio < 0.8) {
+            // 如果效率比例低于90%，再使用2/3分流器进行优化
+            if (efficiencyRatio < 0.9) {
                 // 第二步：包含2/3分流器的完整搜索
                 for (let count3 = 0; count3 <= maxPower3; count3++) {
                     for (let count2 = 0; count2 <= maxPower; count2++) {
@@ -728,20 +731,135 @@
             };
         }
         
+        // 查找轻量化方案（优先减少分流数量，允许效率降低到70%）
+        function findLightweightSplitFromTime(targetTime) {
+            const baseTime = 2;
+            
+            if (targetTime <= baseTime) {
+                return {
+                    pipeline: {
+                        splits: [],
+                        rate: 1 / baseTime,
+                        time: baseTime
+                    },
+                    totalRate: 1 / baseTime,
+                    totalTime: baseTime
+                };
+            }
+            
+            const targetMultiplier = targetTime / baseTime;
+            const minEfficiencyRatio = 0.7; // 允许效率降低到70%
+            const minMultiplier = targetMultiplier * minEfficiencyRatio;
+            
+            let bestSplitCount = Infinity;
+            let bestCount2 = 0;
+            let bestCount3 = 0;
+            let bestCount3_2 = 0;
+            let bestMultiplier = 1;
+            let bestDiff = Infinity;
+            
+            const log2 = Math.log(2);
+            const log3 = Math.log(3);
+            const log3_2 = Math.log(3/2);
+            const logTarget = Math.log(targetMultiplier);
+            
+            const maxPower = Math.ceil(logTarget / Math.min(log2, log3_2)) + 10;
+            const maxPower3 = Math.ceil(logTarget / log3) + 5;
+            
+            // 优先只使用1/3和1/2
+            for (let count3 = 0; count3 <= maxPower3; count3++) {
+                for (let count2 = 0; count2 <= maxPower; count2++) {
+                    const multiplier = Math.pow(2, count2) * Math.pow(3, count3);
+                    const actualTime = 2 * multiplier;
+                    
+                    if (multiplier > targetMultiplier * 1.5) continue;
+                    if (multiplier < minMultiplier || actualTime <= 40) continue;
+                    
+                    if (multiplier <= targetMultiplier) {
+                        const splitCount = count2 + count3;
+                        const diff = Math.abs(multiplier - targetMultiplier);
+                        
+                        // 优先选择分流数量少的，如果数量相同则选择更接近目标的
+                        if (splitCount < bestSplitCount || (splitCount === bestSplitCount && diff < bestDiff)) {
+                            bestSplitCount = splitCount;
+                            bestCount2 = count2;
+                            bestCount3 = count3;
+                            bestCount3_2 = 0;
+                            bestMultiplier = multiplier;
+                            bestDiff = diff;
+                        }
+                    }
+                }
+            }
+            
+            // 如果效率太低，可以添加少量2/3
+            if (bestMultiplier < minMultiplier * 1.1) {
+                for (let count3 = 0; count3 <= maxPower3; count3++) {
+                    for (let count2 = 0; count2 <= maxPower; count2++) {
+                        for (let count3_2 = 0; count3_2 <= 3; count3_2++) { // 最多3个2/3
+                            const multiplier = Math.pow(2, count2) * Math.pow(3, count3) * Math.pow(3/2, count3_2);
+                            const actualTime = 2 * multiplier;
+                            
+                            if (multiplier > targetMultiplier * 1.5) continue;
+                            if (multiplier < minMultiplier || actualTime <= 40) continue;
+                            
+                            if (multiplier <= targetMultiplier) {
+                                const splitCount = count2 + count3 + count3_2;
+                                const diff = Math.abs(multiplier - targetMultiplier);
+                                
+                                if (splitCount < bestSplitCount || (splitCount === bestSplitCount && diff < bestDiff)) {
+                                    bestSplitCount = splitCount;
+                                    bestCount2 = count2;
+                                    bestCount3 = count3;
+                                    bestCount3_2 = count3_2;
+                                    bestMultiplier = multiplier;
+                                    bestDiff = diff;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            const splits = [];
+            for (let i = 0; i < bestCount3; i++) splits.push(3);
+            for (let i = 0; i < bestCount2; i++) splits.push(2);
+            for (let i = 0; i < bestCount3_2; i++) splits.push(3/2);
+            
+            const actualTime = baseTime * bestMultiplier;
+            const actualRate = 1 / actualTime;
+            
+            // 如果轻量化方案效率太低（<70%）或找不到有效方案，返回null
+            const efficiencyRatio = bestMultiplier / targetMultiplier;
+            if (bestMultiplier === 1 || efficiencyRatio < minEfficiencyRatio || actualTime <= 40) {
+                return null;
+            }
+            
+            return {
+                pipeline: {
+                    splits: splits,
+                    rate: actualRate,
+                    time: actualTime
+                },
+                totalRate: actualRate,
+                totalTime: actualTime
+            };
+        }
+        
         function displayResults(x, y, z, chargeRate, fullCharge, dischargeTime, targetEfficiency, solutions) {
             const resultSection = document.getElementById('result');
             const statsDiv = document.getElementById('stats');
             const pipelineListDiv = document.getElementById('pipelineList');
             
-            if (!solutions.pipeline) {
+            if (!solutions.optimal || !solutions.optimal.pipeline) {
                 pipelineListDiv.innerHTML = '<div class="no-solution">无法找到合适的分流方案</div>';
                 document.getElementById('pipelineSection').style.display = 'block';
                 return;
             }
             
-            // 显示统计信息
-            const actualRate = solutions.totalRate;
-            const actualTime = solutions.totalTime;
+            // 使用最佳方案显示统计信息
+            const actualRate = solutions.optimal.totalRate;
+            const actualTime = solutions.optimal.totalTime;
             
             // 检查实际效率是否小于等于40秒
             if (actualTime <= 40) {
@@ -829,55 +947,82 @@
             
             // 显示分流方案
             const pipelineSectionDiv = document.getElementById('pipelineSection');
-            const pipeline = solutions.pipeline;
             
-            // 统计并合并相同的分流
-            let splitsText;
-            if (pipeline.splits.length > 0) {
-                const splitCounts = {};
-                pipeline.splits.forEach(s => {
-                    const key = s === 3/2 ? '1.5' : s.toString();
-                    splitCounts[key] = (splitCounts[key] || 0) + 1;
-                });
+            // 生成分流方案HTML的辅助函数
+            function generatePipelineHTML(pipeline, title, description, badgeColor) {
+                let splitsText;
+                if (pipeline.splits.length > 0) {
+                    const splitCounts = {};
+                    pipeline.splits.forEach(s => {
+                        const key = s === 3/2 ? '1.5' : s.toString();
+                        splitCounts[key] = (splitCounts[key] || 0) + 1;
+                    });
+                    
+                    const splitParts = [];
+                    if (splitCounts['3']) {
+                        const label = splitCounts['3'] === 1 ? '1/3' : `1/3 × ${splitCounts['3']}`;
+                        splitParts.push(`<span class="split-badge">${label}</span>`);
+                    }
+                    if (splitCounts['2']) {
+                        const label = splitCounts['2'] === 1 ? '1/2' : `1/2 × ${splitCounts['2']}`;
+                        splitParts.push(`<span class="split-badge">${label}</span>`);
+                    }
+                    if (splitCounts['1.5']) {
+                        const label = splitCounts['1.5'] === 1 ? '2/3' : `2/3 × ${splitCounts['1.5']}`;
+                        splitParts.push(`<span class="split-badge">${label}</span>`);
+                    }
+                    
+                    splitsText = splitParts.join(' → ');
+                } else {
+                    splitsText = '<span class="split-badge">无分流</span>';
+                }
                 
-                const splitParts = [];
-                if (splitCounts['3']) {
-                    const label = splitCounts['3'] === 1 ? '1/3' : `1/3 × ${splitCounts['3']}`;
-                    splitParts.push(`<span class="split-badge">${label}</span>`);
-                }
-                if (splitCounts['2']) {
-                    const label = splitCounts['2'] === 1 ? '1/2' : `1/2 × ${splitCounts['2']}`;
-                    splitParts.push(`<span class="split-badge">${label}</span>`);
-                }
-                if (splitCounts['1.5']) {
-                    const label = splitCounts['1.5'] === 1 ? '2/3' : `2/3 × ${splitCounts['1.5']}`;
-                    splitParts.push(`<span class="split-badge">${label}</span>`);
-                }
+                const timeDisplay = pipeline.time ? `${pipeline.time.toFixed(4)}秒/个` : '2秒/个';
+                const efficiency = (pipeline.time / targetEfficiency * 100).toFixed(2);
+                const splitCount = pipeline.splits.length;
                 
-                splitsText = splitParts.join(' → ');
-            } else {
-                splitsText = '<span class="split-badge">无分流</span>';
+                return `
+                    <div class="pipeline-item">
+                        <div class="pipeline-header">
+                            <div class="pipeline-title">
+                                <strong style="color: ${badgeColor};">${title}</strong>
+                                <div style="font-size: 11px; color: #666; margin-top: 2px;">${description}</div>
+                            </div>
+                            <div class="pipeline-efficiency" style="background: ${badgeColor};">${timeDisplay}</div>
+                        </div>
+                        <div class="pipeline-splits">
+                            <strong>分流设置：</strong>${splitsText}
+                        </div>
+                        <div class="pipeline-splits">
+                            <strong>速率：</strong>${pipeline.rate.toFixed(6)} 个/秒 | 
+                            <strong>效率：</strong>${pipeline.time.toFixed(4)} 秒/个 | 
+                            <strong>效率比例：</strong><span style="color: ${parseFloat(efficiency) >= 70 ? '#4caf50' : '#e53935'}">${efficiency}%</span>
+                        </div>
+                        <div class="pipeline-splits">
+                            <strong>分流数量：</strong>${splitCount} 个
+                        </div>
+                    </div>
+                `;
             }
             
-            const timeDisplay = pipeline.time ? `${pipeline.time}秒/个` : '2秒/个';
+            // 生成方案HTML
+            let html = '';
+            html += generatePipelineHTML(
+                solutions.optimal.pipeline,
+                '最佳分流方案',
+                '最接近目标效率，在效率相同时优先使用最少分流器',
+                '#39c5bb'
+            );
             
-            let html = `
-                <div class="pipeline-item">
-                    <div class="pipeline-header">
-                        <div class="pipeline-title">分流配置</div>
-                        <div class="pipeline-efficiency">${timeDisplay}</div>
-                    </div>
-                    <div class="pipeline-splits">
-                        <strong>分流设置：</strong>${splitsText}
-                    </div>
-                    <div class="pipeline-splits">
-                        <strong>速率：</strong>${pipeline.rate.toFixed(6)} 个/秒
-                    </div>
-                    <div class="pipeline-splits">
-                        <strong>效率：</strong>${pipeline.time.toFixed(4)} 秒/个
-                    </div>
-                </div>
-            `;
+            // 只有轻量化方案有效时才显示
+            if (solutions.lightweight && solutions.lightweight.pipeline) {
+                html += generatePipelineHTML(
+                    solutions.lightweight.pipeline,
+                    '轻量化方案',
+                    '减少分流器数量，允许适当损失效率（保持70%以上）',
+                    '#ff9800'
+                );
+            }
             
             pipelineListDiv.innerHTML = html;
             pipelineSectionDiv.style.display = 'block';

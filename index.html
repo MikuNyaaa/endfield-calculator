@@ -391,13 +391,7 @@
             
             <div class="input-group">
                 <label for="battery">电池供电量 (z):</label>
-                <select id="battery">
-                    <option value="" disabled selected>请选择电池类型</option>
-                    <option value="220">低谷地电 (220)</option>
-                    <option value="420">中谷地电 (420)</option>
-                    <option value="1100">高谷地电 (1100)</option>
-                    <option value="1600">低武陵电 (1600)</option>
-                </select>
+                <input type="number" id="battery" min="1" step="1" placeholder="输入单个电池供电量" oninput="validatePositiveInteger(this)" onkeypress="return isNumberKey(event)">
             </div>
             
             <button onclick="calculate()">计算分流方案</button>
@@ -424,9 +418,41 @@
         // 页面加载时显示加载中状态
         window.addEventListener('DOMContentLoaded', function() {
             document.getElementById('usageCount').textContent = '加载中...';
+            setupEnterNavigation();
             // 异步加载当前计数（使用up端点但传入0来获取当前值）
             loadUsageCount();
         });
+
+        function setupEnterNavigation() {
+            const fields = ['consumption', 'production', 'battery'];
+
+            fields.forEach(function(fieldId, index) {
+                const field = document.getElementById(fieldId);
+                if (!field) {
+                    return;
+                }
+
+                field.addEventListener('keydown', function(event) {
+                    if (event.key !== 'Enter') {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    const nextFieldId = fields[index + 1];
+                    if (nextFieldId) {
+                        const nextField = document.getElementById(nextFieldId);
+                        if (nextField) {
+                            nextField.focus();
+                            nextField.select();
+                        }
+                        return;
+                    }
+
+                    calculate();
+                });
+            });
+        }
         
         // 加载使用次数（只读取，不增加计数）
         async function loadUsageCount() {
@@ -535,7 +561,7 @@
             
             // 检查满转生产是否至少大于1节电池供电量
             if (y <= z) {
-                alert('满转生产必须至少大于1节选定的电池供电量！\n当前满转生产: ' + y + '\n当前电池供电量: ' + z + '\n最小要求: ' + (z + 1));
+                alert('满转生产必须至少大于1节输入的电池供电量！\n当前满转生产: ' + y + '\n当前电池供电量: ' + z + '\n最小要求: ' + (z + 1));
                 return;
             }
             
